@@ -351,7 +351,7 @@ class Sound:
             for i, f in enumerate(bass_notes):
                 off = i * s8 * 4
                 if f > 0:
-                    s = self._tri(f, n8 * 3.8, bass_vol)
+                    s = self._tri(f, n8 * 3.9, bass_vol)
                     e = min(off + len(s), total)
                     bass[off:e] = s[:e - off]
 
@@ -378,84 +378,91 @@ class Sound:
                         hat_vol=0.05)
 
         # ── VERSE A (8 bars = 64 eighths) ────────────────────
-        # Classic ascending Cm arpeggios
+        # Classic ascending Cm arpeggios – the main theme
         va_mel = [
             # Cm (2 bars)
             C4, Eb4, G4, C5, G4, Eb4, C4, Eb4,
             C4, G4,  C5, G4, Eb4, C4, Eb4, G4,
-            # Bbmaj (2 bars)
+            # Bb (2 bars)
             Bb3, D4, F4, Bb4, F4, D4, Bb3, D4,
             Bb3, F4, Bb4, F4, D4, Bb3, D4, F4,
-            # Abmaj (2 bars)
+            # Ab (2 bars)
             Ab3, C4, Eb4, Ab4, Eb4, C4, Ab3, C4,
             Ab3, Eb4, Ab4, Eb4, C4, Ab3, C4, Eb4,
-            # G → Cm resolve (2 bars)
+            # G → Cm (2 bars)
             G3, B3, D4, G4, D4, B3, G3, B3,
             G3, D4, G4, B4, G4, D4, C4, Eb4,
         ]
-        va_bass = [C2, C2, Bb2, Bb2, Ab2, Ab2, G2, C2]
-        va_hat  = [1,0,1,0, 1,0,1,0]  # steady eighth hihats
+        #                   16 entries = 16 half-notes = 8 bars
+        va_bass = [C2, C2, C2, C3, Bb2, Bb2, Bb2, Bb2,
+                   Ab2, Ab2, Ab2, Ab2, G2, G2, G2, C2]
+        va_hat  = [1,0,1,0, 1,0,1,0]
         verse_a = _render(va_mel, va_bass, va_hat)
 
         # ── VERSE A' (8 bars) ────────────────────────────────
-        # Same chords, descending melody variation
+        # Subtle variation: same chords, melody goes down then up
+        # (only small changes from verse A – a few notes swapped)
         va2_mel = [
-            # Cm – descending
+            # Cm – starts high, comes back (subtle inversion)
             C5, G4, Eb4, C4, Eb4, G4, C5, G4,
-            Eb4, C4, G4, Eb4, C4, Eb4, G4, C4,
-            # Bb – descending
+            C4, G4,  C5, G4, Eb4, C4, Eb4, G4,
+            # Bb – same shape, starts from top
             Bb4, F4, D4, Bb3, D4, F4, Bb4, F4,
-            D4, Bb3, F4, D4, Bb3, D4, F4, Bb3,
-            # Ab – mixed
-            Ab4, Eb4, C4, Eb4, Ab4, C5, Ab4, Eb4,
-            C4, Eb4, Ab4, Eb4, C4, Ab3, C4, Eb4,
-            # G – tension build
-            G4, D4, B3, D4, G4, B4, D5, B4,
-            G4, D4, B3, G3, B3, D4, G4, C5,
+            Bb3, F4, Bb4, F4, D4, Bb3, D4, F4,
+            # Ab – identical to verse A (anchor)
+            Ab3, C4, Eb4, Ab4, Eb4, C4, Ab3, C4,
+            Ab3, Eb4, Ab4, Eb4, C4, Ab3, C4, Eb4,
+            # G → Cm – slight embellishment at end
+            G3, B3, D4, G4, D4, B3, G3, B3,
+            G3, D4, G4, B4, G4, Eb4, C4, G4,
         ]
-        va2_bass = [C2, C3, Bb2, Bb2, Ab2, Ab2, G2, G2]
-        va2_hat  = [1,0,1,0, 1,0,1,1]  # hat accent on beat 4 &
+        va2_bass = [C2, C2, C2, C3, Bb2, Bb2, Bb2, Bb2,
+                    Ab2, Ab2, Ab2, Ab2, G2, G2, G2, C2]
+        va2_hat  = [1,0,1,0, 1,0,1,1]
         verse_a2 = _render(va2_mel, va2_bass, va2_hat)
 
         # ── CHORUS (8 bars) ──────────────────────────────────
-        # Higher energy: Fm → G → Ab → Bb, octave jumps
+        # Same Cm→Bb→Ab→G chords but melody peaks one octave higher
+        # at phrase endings – subtle lift, not a different song
         ch_mel = [
-            # Fm (2 bars) – driving
-            F4, Ab4, C5, F5, C5, Ab4, F4, C5,
-            F4, Ab4, C5, Ab4, F4, Ab4, C5, F5,
-            # G (2 bars) – rising
-            G4, B4, D5, G5, D5, B4, G4, D5,
-            G4, B4, D5, B4, G4, B4, D5, G5,
-            # Ab (2 bars) – soaring
-            Ab4, C5, Eb5, Ab4, Eb5, C5, Ab4, C5,
-            Ab4, Eb5, C5, Eb5, Ab4, C5, Eb5, C5,
-            # Bb → Cm (2 bars) – resolution
-            Bb4, D5, F5, D5, Bb4, F4, Bb4, D5,
-            C5, Eb5, G5, Eb5, C5, G4, C5, Eb5,
+            # Cm – same arpeggio, but bar 2 peaks at C5
+            C4, Eb4, G4, C5, G4, Eb4, C4, G4,
+            C4, Eb4, G4, C5, Eb5, C5, G4, Eb4,
+            # Bb – same shape, bar 2 peaks at Bb4
+            Bb3, D4, F4, Bb4, F4, D4, Bb3, F4,
+            Bb3, D4, F4, Bb4, D5, Bb4, F4, D4,
+            # Ab – same, bar 2 peaks at Ab4→C5
+            Ab3, C4, Eb4, Ab4, Eb4, C4, Ab3, Eb4,
+            Ab3, C4, Eb4, Ab4, C5, Ab4, Eb4, C4,
+            # G → Cm – builds to highest note then resolves
+            G3, B3, D4, G4, D4, B3, G4, B4,
+            G4, B4, D5, G5, D5, B4, C5, Eb5,
         ]
-        ch_bass = [F2, F2, G2, G2, Ab2, Ab2, Bb2, C3]
-        ch_hat  = [1,1,1,0, 1,1,1,0]  # busier hihat
+        ch_bass = [C2, C2, C2, C3, Bb2, Bb2, Bb2, Bb2,
+                   Ab2, Ab2, Ab2, Ab2, G2, G2, G2, C3]
+        ch_hat  = [1,0,1,1, 1,0,1,1]  # slightly busier hihat
         chorus = _render(ch_mel, ch_bass, ch_hat,
                          lead_vol=0.12, hat_vol=0.05)
 
         # ── BRIDGE (8 bars) ──────────────────────────────────
-        # Halftime feel – longer sustained notes, breathing room
-        # Each note here lasts a quarter (2 eighths) via repeated freq
+        # Same chords, halftime feel – notes held longer (repeated)
+        # Gives breathing room; still recognisably the same tune
         br_mel = [
-            # Eb (2 bars) – floating
-            Eb4, Eb4, G4, G4, Bb4, Bb4, Eb5, Eb5,
-            Bb4, Bb4, G4, G4, Eb4, Eb4, REST, REST,
-            # Fm (2 bars) – melancholy
-            F4, F4, Ab4, Ab4, C5, C5, F5, F5,
-            C5, C5, Ab4, Ab4, F4, F4, REST, REST,
-            # G (2 bars) – building
-            G4, G4, B4, B4, D5, D5, G5, G5,
-            D5, D5, B4, B4, G4, G4, D4, D4,
-            # Ab → G (2 bars) – tension & release
-            Ab4, Ab4, C5, C5, Eb5, Eb5, C5, C5,
-            G4, G4, B4, B4, D5, D5, G4, G4,
+            # Cm – long tones
+            C4, C4, Eb4, Eb4, G4, G4, C5, C5,
+            G4, G4, Eb4, Eb4, C4, C4, C4, C4,
+            # Bb – long tones
+            Bb3, Bb3, D4, D4, F4, F4, Bb4, Bb4,
+            F4, F4, D4, D4, Bb3, Bb3, Bb3, Bb3,
+            # Ab – long tones
+            Ab3, Ab3, C4, C4, Eb4, Eb4, Ab4, Ab4,
+            Eb4, Eb4, C4, C4, Ab3, Ab3, Ab3, Ab3,
+            # G → Cm – builds back into the theme
+            G3, G3, B3, B3, D4, D4, G4, G4,
+            G4, G4, B4, B4, D4, D4, C4, Eb4,
         ]
-        br_bass = [Eb2, Eb2, F2, F2, G2, G2, Ab2, G2]
+        br_bass = [C2, C2, C2, C2, Bb2, Bb2, Bb2, Bb2,
+                   Ab2, Ab2, Ab2, Ab2, G2, G2, G2, C2]
         br_hat  = [1,0,0,0, 1,0,0,0]  # sparse – halftime feel
         bridge = _render(br_mel, br_bass, br_hat,
                          lead_vol=0.09, bass_vol=0.20,
@@ -584,16 +591,16 @@ class AI:
             return 0 if diff < -2 else (2 if diff > 2 else 1)
 
         # --- attention: low-level AI ignores ball until it's close ---
-        #   lvl 1 → reacts when ball past 70% of field width
-        #   lvl 5 → reacts when past 30%
-        #   lvl 9+ → always attentive
-        react_x = self.fw * max(0.0, 0.85 - lvl * 0.10)
+        #   lvl 1 → reacts when ball past 55% of field width
+        #   lvl 5 → reacts when past 15%
+        #   lvl 8+ → always attentive
+        react_x = self.fw * max(0.0, 0.65 - lvl * 0.08)
         if bx < react_x:
             return 1            # "I'll worry about it later"
 
         # --- hesitation: sometimes freezes instead of moving ---
-        #   lvl 1 → 22%,  lvl 5 → 9%,  lvl 8+ → 0%
-        hesitate = max(0.0, 0.25 - lvl * 0.03)
+        #   lvl 1 → 10%,  lvl 5 → 2%,  lvl 8+ → 0%
+        hesitate = max(0.0, 0.12 - lvl * 0.015)
         if random.random() < hesitate:
             return 1
 
@@ -615,26 +622,26 @@ class AI:
             ty = predict_y(by, bdy, steps, self.fh)
 
         # --- positional noise (shrinks with level) ---
-        #   lvl 1 → sigma ≈ 7    (very inaccurate)
-        #   lvl 5 → sigma ≈ 3.5
-        #   lvl 10 → sigma ≈ 0.5
-        noise = max(0.5, 7.5 - lvl * 0.7)
+        #   lvl 1 → sigma ≈ 3.5  (noticeably off)
+        #   lvl 5 → sigma ≈ 1.5
+        #   lvl 10 → sigma ≈ 0.3
+        noise = max(0.3, 4.0 - lvl * 0.4)
         ty += random.gauss(0, noise)
 
         # --- at low levels, blend toward ball's current Y ---
-        #   lvl 1 → 70% current Y, 30% predicted
-        #   lvl 5 → 20% current Y
+        #   lvl 1 → 50% current Y, 50% predicted
+        #   lvl 5 → 10% current Y
         #   lvl 8+ → 0%
-        track = max(0.0, 0.8 - lvl * 0.1)
+        track = max(0.0, 0.6 - lvl * 0.08)
         ty = ty * (1.0 - track) + by * track
 
         ty = max(0.0, min(float(self.fh - 1), ty))
 
-        # --- dead-zone: bigger at low levels (lazy paddle) ---
-        #   lvl 1 → 3.5   (won't move for small differences)
-        #   lvl 5 → 2.0
-        #   lvl 10 → 0.8
-        deadzone = max(0.8, 4.0 - lvl * 0.35)
+        # --- dead-zone: bigger at low levels ---
+        #   lvl 1 → 2.2   (tolerates small offsets)
+        #   lvl 5 → 1.2
+        #   lvl 10 → 0.6
+        deadzone = max(0.6, 2.5 - lvl * 0.2)
         diff = ty - acy
         if diff < -deadzone:
             return 0
@@ -718,8 +725,8 @@ class AI:
 
     @property
     def speed(self):
-        # Lvl 1 → 0.55,  Lvl 5 → 0.75,  Lvl 10 → 1.0
-        return min(1.2, 0.50 + self.level * 0.05)
+        # Lvl 1 → 0.65,  Lvl 5 → 0.85,  Lvl 10 → 1.1
+        return min(1.2, 0.60 + self.level * 0.05)
 
 
 # ═══════════════════════════════════════════════════════════════
