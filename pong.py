@@ -1248,11 +1248,20 @@ class RetroPong:
                 self.f_left + int(self.bx), CH_BALL,
                 curses.color_pair(CP_BALL) | curses.A_BOLD)
 
-        # turbo indicator
-        if self.bspd > BALL_SPD_INIT + 0.25:
-            t = 'TURBO!'
+        # speed indicator — visible from the first hit
+        if self.rally > 0:
+            mult = self.bspd / BALL_SPD_INIT
+            if mult >= 2.5:
+                t = f'x{mult:.1f} TURBO!'
+                cp = CP_DANGER
+            elif mult >= 1.5:
+                t = f'x{mult:.1f} FAST'
+                cp = CP_SCORE
+            else:
+                t = f'x{mult:.1f}'
+                cp = CP_INFO
             saddstr(self.scr, self.f_top, cx(w, len(t)), t,
-                    curses.color_pair(CP_DANGER) | curses.A_BOLD)
+                    curses.color_pair(cp) | curses.A_BOLD)
 
         # paddles
         for py in range(PADDLE_H):
