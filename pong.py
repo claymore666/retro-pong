@@ -387,13 +387,24 @@ class NN:
 # ═══════════════════════════════════════════════════════════════
 
 class AI:
+    """AI with human-like progression.
+
+    Lvl 1-2: tracks ball's current Y (beginner, no prediction)
+    Lvl 3-4: crude linear extrapolation, no bounce awareness
+    Lvl 5-7: learns to handle 1 bounce, still noisy
+    Lvl 8+:  near-perfect trajectory prediction (earned)
+
+    Each level also increases movement speed and reduces positional noise.
+    The neural network trains on live experience and gradually supplements
+    the rule-based behaviour.
+    """
     ACTIONS = [-1, 0, 1]   # up / stay / down
 
     def __init__(self, fw, fh):
         self.fw, self.fh = fw, fh
         self.nn = NN(6, 128, 3)
         self.buf = deque(maxlen=5000)
-        self.eps = 0.05
+        self.eps = 0.04
         self.gamma = 0.9
         self.hits = 0
         self.level = 1
@@ -412,22 +423,87 @@ class AI:
             max(0, self.fw - bx) / max(self.fw, 1),
         ])
 
+    # ── level-aware heuristic ─────────────────────────────────
     def _rule(self, bx, by, bdx, bdy, acy):
-        """Trajectory-prediction heuristic (reliable baseline)."""
-        if bdx > 0.01:
-            steps = max(1, (self.fw - 3 - bx) / bdx)
+        """Heuristic whose skill depends on self.level.
+
+        Lvl 1-2: lazy, only reacts when ball is close, tracks current Y
+        Lvl 3-4: starts predicting linearly, still noisy & slow to react
+        Lvl 5-7: bounce-aware prediction, moderate noise
+        Lvl 8+ : near-perfect prediction, fast reactions
+        """
+        lvl = self.level
+
+        if bdx <= 0.01:
+            # ball heading away → drift toward centre (lazy)
+            if lvl < 5:
+                return 1        # low-level AI just stands still
+            ty = self.fh / 2.0
+            diff = ty - acy
+            return 0 if diff < -2 else (2 if diff > 2 else 1)
+
+        # --- attention: low-level AI ignores ball until it's close ---
+        #   lvl 1 → reacts when ball past 70% of field width
+        #   lvl 5 → reacts when past 30%
+        #   lvl 9+ → always attentive
+        react_x = self.fw * max(0.0, 0.85 - lvl * 0.10)
+        if bx < react_x:
+            return 1            # "I'll worry about it later"
+
+        # --- hesitation: sometimes freezes instead of moving ---
+        #   lvl 1 → 22%,  lvl 5 → 9%,  lvl 8+ → 0%
+        hesitate = max(0.0, 0.25 - lvl * 0.03)
+        if random.random() < hesitate:
+            return 1
+
+        steps = max(1, (self.fw - 3 - bx) / bdx)
+
+        # --- prediction quality depends on level ---
+        if lvl <= 2:
+            # Beginner: just track ball's current Y position
+            ty = by
+        elif lvl <= 4:
+            # Novice: linear extrapolation, no bounce awareness
+            ty = by + bdy * steps
+            ty = max(0.0, min(float(self.fh - 1), ty))
+        elif lvl <= 7:
+            # Intermediate: bounce-aware prediction
             ty = predict_y(by, bdy, steps, self.fh)
         else:
-            ty = self.fh / 2.0
+            # Expert: full prediction
+            ty = predict_y(by, bdy, steps, self.fh)
+
+        # --- positional noise (shrinks with level) ---
+        #   lvl 1 → sigma ≈ 7    (very inaccurate)
+        #   lvl 5 → sigma ≈ 3.5
+        #   lvl 10 → sigma ≈ 0.5
+        noise = max(0.5, 7.5 - lvl * 0.7)
+        ty += random.gauss(0, noise)
+
+        # --- at low levels, blend toward ball's current Y ---
+        #   lvl 1 → 70% current Y, 30% predicted
+        #   lvl 5 → 20% current Y
+        #   lvl 8+ → 0%
+        track = max(0.0, 0.8 - lvl * 0.1)
+        ty = ty * (1.0 - track) + by * track
+
+        ty = max(0.0, min(float(self.fh - 1), ty))
+
+        # --- dead-zone: bigger at low levels (lazy paddle) ---
+        #   lvl 1 → 3.5   (won't move for small differences)
+        #   lvl 5 → 2.0
+        #   lvl 10 → 0.8
+        deadzone = max(0.8, 4.0 - lvl * 0.35)
         diff = ty - acy
-        if diff < -1.0:
+        if diff < -deadzone:
             return 0
-        if diff > 1.0:
+        if diff > deadzone:
             return 2
         return 1
 
+    # ── pre-training ──────────────────────────────────────────
     def _pretrain(self):
-        """Pre-train NN on rule-based demonstrations."""
+        """Pre-train NN on demonstrations at *current* skill level."""
         S, T = [], []
         for _ in range(5000):
             bx = random.uniform(0, self.fw)
@@ -451,6 +527,7 @@ class AI:
                 b = idx[i:i + 64]
                 self.nn.train(S[b], T[b])
 
+    # ── action selection ──────────────────────────────────────
     def act(self, bx, by, bdx, bdy, acy):
         s = self._state(bx, by, bdx, bdy, acy)
         if random.random() < self.eps:
@@ -500,7 +577,8 @@ class AI:
 
     @property
     def speed(self):
-        return AI_SPD_BASE + AI_SPD_INC * self.level
+        # Lvl 1 → 0.55,  Lvl 5 → 0.75,  Lvl 10 → 1.0
+        return min(1.2, 0.50 + self.level * 0.05)
 
 
 # ═══════════════════════════════════════════════════════════════
