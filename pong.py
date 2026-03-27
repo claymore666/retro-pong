@@ -302,45 +302,186 @@ class Sound:
                 pass
 
     def _make_music(self):
+        """Generate a full chiptune track with verse / chorus / bridge
+        structure (~55 seconds) before looping.
+
+        Layout
+        ──────
+          Intro (4 bars)  – bass + hihat only, builds tension
+          Verse A (8 bars) – classic Cm arpeggio theme
+          Verse A' (8 bars) – same chords, descending melody variation
+          Chorus (8 bars)  – higher energy, Fm→G→Ab→Bb progression
+          Bridge (8 bars)  – halftime feel, sustained notes, Eb→Fm→G
+          Verse A (8 bars) – theme returns
+          Outro (4 bars)   – melody fades, bass walks back to root
+        """
         bpm = 140
-        n8 = 60.0 / bpm / 2          # eighth-note duration
+        n8 = 60.0 / bpm / 2          # eighth-note duration (≈0.214s)
         s8 = int(self.RATE * n8)      # samples per eighth
 
-        # melody: Cm  Bb  Ab  G arpeggios (eighth notes)
-        mel = [
-            262, 311, 392, 523, 392, 311, 262, 311,
-            233, 294, 349, 466, 349, 294, 233, 294,
-            208, 262, 311, 415, 311, 262, 208, 262,
-            196, 247, 294, 392, 294, 247, 196, 247,
+        # ── note frequencies ──────────────────────────────────
+        # fmt: off
+        C2=65;   D2=73;   Eb2=78;  F2=87;   G2=98
+        Ab2=104; Bb2=117; B2=123;  C3=131;  D3=147
+        Eb3=156; F3=175;  G3=196;  Ab3=208; Bb3=233
+        B3=247;  C4=262;  D4=294;  Eb4=311; F4=349
+        G4=392;  Ab4=415; Bb4=466; B4=494;  C5=523
+        D5=587;  Eb5=659; F5=698;  G5=784
+        REST = 0
+        # fmt: on
+
+        # Helper: render a section from (melody, bass, hihat_pattern)
+        # Each melody/bass entry is one eighth note.
+        def _render(mel, bass_notes, hat_pat, lead_vol=0.10,
+                    bass_vol=0.18, hat_vol=0.04, note_len=0.85):
+            n = len(mel)
+            total = s8 * n
+            lead = np.zeros(total, dtype=np.int16)
+            bass = np.zeros(total, dtype=np.int16)
+            hh   = np.zeros(total, dtype=np.int16)
+
+            for i, f in enumerate(mel):
+                off = i * s8
+                if f > 0:
+                    s = self._sq(f, n8 * note_len, lead_vol)
+                    e = min(off + len(s), total)
+                    lead[off:e] = s[:e - off]
+
+            # bass: one entry per half-note (4 eighths)
+            for i, f in enumerate(bass_notes):
+                off = i * s8 * 4
+                if f > 0:
+                    s = self._tri(f, n8 * 3.8, bass_vol)
+                    e = min(off + len(s), total)
+                    bass[off:e] = s[:e - off]
+
+            # hihat pattern repeats every bar (8 eighths)
+            for i in range(n):
+                pi = i % len(hat_pat)
+                if hat_pat[pi]:
+                    off = i * s8
+                    s = self._noise(n8 * 0.25, hat_vol)
+                    e = min(off + len(s), total)
+                    hh[off:e] = s[:e - off]
+
+            return np.clip(
+                lead.astype(np.int32) + bass.astype(np.int32)
+                + hh.astype(np.int32), -32767, 32767
+            ).astype(np.int16)
+
+        # ── INTRO (4 bars = 32 eighths) ──────────────────────
+        # No melody, just bass and hihat building up
+        intro_mel  = [REST]*32
+        intro_bass = [C2, C2, C2, C2, Ab2, Ab2, G2, G2]
+        intro_hat  = [1,0,0,0, 1,0,0,0]  # sparse kick pattern
+        intro = _render(intro_mel, intro_bass, intro_hat,
+                        hat_vol=0.05)
+
+        # ── VERSE A (8 bars = 64 eighths) ────────────────────
+        # Classic ascending Cm arpeggios
+        va_mel = [
+            # Cm (2 bars)
+            C4, Eb4, G4, C5, G4, Eb4, C4, Eb4,
+            C4, G4,  C5, G4, Eb4, C4, Eb4, G4,
+            # Bbmaj (2 bars)
+            Bb3, D4, F4, Bb4, F4, D4, Bb3, D4,
+            Bb3, F4, Bb4, F4, D4, Bb3, D4, F4,
+            # Abmaj (2 bars)
+            Ab3, C4, Eb4, Ab4, Eb4, C4, Ab3, C4,
+            Ab3, Eb4, Ab4, Eb4, C4, Ab3, C4, Eb4,
+            # G → Cm resolve (2 bars)
+            G3, B3, D4, G4, D4, B3, G3, B3,
+            G3, D4, G4, B4, G4, D4, C4, Eb4,
         ]
-        bass_f = [131, 131, 117, 117, 104, 104, 98, 131]
+        va_bass = [C2, C2, Bb2, Bb2, Ab2, Ab2, G2, C2]
+        va_hat  = [1,0,1,0, 1,0,1,0]  # steady eighth hihats
+        verse_a = _render(va_mel, va_bass, va_hat)
 
-        total = s8 * len(mel)
-        lead = np.zeros(total, dtype=np.int16)
-        bass = np.zeros(total, dtype=np.int16)
-        hhat = np.zeros(total, dtype=np.int16)
+        # ── VERSE A' (8 bars) ────────────────────────────────
+        # Same chords, descending melody variation
+        va2_mel = [
+            # Cm – descending
+            C5, G4, Eb4, C4, Eb4, G4, C5, G4,
+            Eb4, C4, G4, Eb4, C4, Eb4, G4, C4,
+            # Bb – descending
+            Bb4, F4, D4, Bb3, D4, F4, Bb4, F4,
+            D4, Bb3, F4, D4, Bb3, D4, F4, Bb3,
+            # Ab – mixed
+            Ab4, Eb4, C4, Eb4, Ab4, C5, Ab4, Eb4,
+            C4, Eb4, Ab4, Eb4, C4, Ab3, C4, Eb4,
+            # G – tension build
+            G4, D4, B3, D4, G4, B4, D5, B4,
+            G4, D4, B3, G3, B3, D4, G4, C5,
+        ]
+        va2_bass = [C2, C3, Bb2, Bb2, Ab2, Ab2, G2, G2]
+        va2_hat  = [1,0,1,0, 1,0,1,1]  # hat accent on beat 4 &
+        verse_a2 = _render(va2_mel, va2_bass, va2_hat)
 
-        for i, f in enumerate(mel):
-            note = self._sq(f, n8 * 0.85, 0.10)
-            off = i * s8
-            end = min(off + len(note), total)
-            lead[off:end] = note[:end - off]
-            if i % 2 == 0:
-                tick = self._noise(n8 * 0.25, 0.04)
-                end2 = min(off + len(tick), total)
-                hhat[off:end2] = tick[:end2 - off]
+        # ── CHORUS (8 bars) ──────────────────────────────────
+        # Higher energy: Fm → G → Ab → Bb, octave jumps
+        ch_mel = [
+            # Fm (2 bars) – driving
+            F4, Ab4, C5, F5, C5, Ab4, F4, C5,
+            F4, Ab4, C5, Ab4, F4, Ab4, C5, F5,
+            # G (2 bars) – rising
+            G4, B4, D5, G5, D5, B4, G4, D5,
+            G4, B4, D5, B4, G4, B4, D5, G5,
+            # Ab (2 bars) – soaring
+            Ab4, C5, Eb5, Ab4, Eb5, C5, Ab4, C5,
+            Ab4, Eb5, C5, Eb5, Ab4, C5, Eb5, C5,
+            # Bb → Cm (2 bars) – resolution
+            Bb4, D5, F5, D5, Bb4, F4, Bb4, D5,
+            C5, Eb5, G5, Eb5, C5, G4, C5, Eb5,
+        ]
+        ch_bass = [F2, F2, G2, G2, Ab2, Ab2, Bb2, C3]
+        ch_hat  = [1,1,1,0, 1,1,1,0]  # busier hihat
+        chorus = _render(ch_mel, ch_bass, ch_hat,
+                         lead_vol=0.12, hat_vol=0.05)
 
-        for i, f in enumerate(bass_f):
-            note = self._tri(f, n8 * 3.8, 0.18)
-            off = i * s8 * 4
-            end = min(off + len(note), total)
-            bass[off:end] = note[:end - off]
+        # ── BRIDGE (8 bars) ──────────────────────────────────
+        # Halftime feel – longer sustained notes, breathing room
+        # Each note here lasts a quarter (2 eighths) via repeated freq
+        br_mel = [
+            # Eb (2 bars) – floating
+            Eb4, Eb4, G4, G4, Bb4, Bb4, Eb5, Eb5,
+            Bb4, Bb4, G4, G4, Eb4, Eb4, REST, REST,
+            # Fm (2 bars) – melancholy
+            F4, F4, Ab4, Ab4, C5, C5, F5, F5,
+            C5, C5, Ab4, Ab4, F4, F4, REST, REST,
+            # G (2 bars) – building
+            G4, G4, B4, B4, D5, D5, G5, G5,
+            D5, D5, B4, B4, G4, G4, D4, D4,
+            # Ab → G (2 bars) – tension & release
+            Ab4, Ab4, C5, C5, Eb5, Eb5, C5, C5,
+            G4, G4, B4, B4, D5, D5, G4, G4,
+        ]
+        br_bass = [Eb2, Eb2, F2, F2, G2, G2, Ab2, G2]
+        br_hat  = [1,0,0,0, 1,0,0,0]  # sparse – halftime feel
+        bridge = _render(br_mel, br_bass, br_hat,
+                         lead_vol=0.09, bass_vol=0.20,
+                         note_len=0.95)
 
-        mix = np.clip(
-            lead.astype(np.int32) + bass.astype(np.int32) + hhat.astype(np.int32),
-            -32767, 32767,
-        ).astype(np.int16)
-        return mix
+        # ── VERSE A reprise (8 bars) – same as verse_a ───────
+        reprise = _render(va_mel, va_bass, va_hat)
+
+        # ── OUTRO (4 bars = 32 eighths) ──────────────────────
+        # Melody thins out, bass walks to root
+        ou_mel = [
+            C5, REST, G4, REST, Eb4, REST, C4, REST,
+            G4, REST, Eb4, REST, C4, REST, REST, REST,
+            Eb4, REST, C4, REST, G3, REST, REST, REST,
+            C4, REST, REST, REST, REST, REST, REST, REST,
+        ]
+        ou_bass = [C2, Ab2, F2, Eb2, Ab2, G2, G2, C2]
+        ou_hat  = [1,0,0,0, 0,0,0,0]
+        outro = _render(ou_mel, ou_bass, ou_hat,
+                        lead_vol=0.08, hat_vol=0.03)
+
+        # ── assemble full track ───────────────────────────────
+        return np.concatenate([
+            intro, verse_a, verse_a2, chorus,
+            bridge, reprise, outro,
+        ])
 
 
 # ═══════════════════════════════════════════════════════════════
