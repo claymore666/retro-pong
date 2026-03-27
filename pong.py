@@ -954,6 +954,7 @@ class RetroPong:
     def _intro(self):
         if not self._ok_size():
             return False
+        self.snd.start_music()
         h, w = self.scr.getmaxyx()
         self.scr.timeout(50)
 
@@ -1527,7 +1528,8 @@ class RetroPong:
                 return
             while True:
                 self._init_field()
-                self.snd.start_music()
+                if not self.snd._music_proc:
+                    self.snd.start_music()
                 self._show_round()
                 winner = self._loop()
                 self.snd.stop_music()
