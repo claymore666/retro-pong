@@ -44,7 +44,7 @@ FPS = 30
 WINNING_SCORE = 11
 PADDLE_H = 4
 BALL_SPD_INIT = 0.55
-BALL_SPD_INC = 0.018
+BALL_SPD_MULT = 1.05            # +5% per rally hit
 BALL_SPD_MAX = 1.5
 PLAYER_SPD = 1.2
 AI_SPD_BASE = 0.85
@@ -1084,8 +1084,7 @@ class RetroPong:
         if m:
             self.bdx /= m
             self.bdy /= m
-        self.bspd = min(BALL_SPD_INIT + BALL_SPD_INC * self.rally,
-                        BALL_SPD_MAX)
+        self.bspd = BALL_SPD_INIT
         self.trail.clear()
 
     # ── physics ───────────────────────────────────────────────
@@ -1116,8 +1115,7 @@ class RetroPong:
                 self.bdx /= m; self.bdy /= m
             self.bx = self.px_p + 1.6
             self.rally += 1
-            self.bspd = min(BALL_SPD_INIT + BALL_SPD_INC * self.rally,
-                            BALL_SPD_MAX)
+            self.bspd = min(self.bspd * BALL_SPD_MULT, BALL_SPD_MAX)
             self.snd.hit()
 
         # AI paddle
@@ -1132,8 +1130,7 @@ class RetroPong:
                 self.bdx /= m; self.bdy /= m
             self.bx = self.px_ai - 1.6
             self.rally += 1
-            self.bspd = min(BALL_SPD_INIT + BALL_SPD_INC * self.rally,
-                            BALL_SPD_MAX)
+            self.bspd = min(self.bspd * BALL_SPD_MULT, BALL_SPD_MAX)
             self.ai.on_hit()
             self.snd.hit()
             if self.ai.hits > 0 and self.ai.hits % 3 == 0:
